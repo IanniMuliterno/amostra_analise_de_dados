@@ -1,0 +1,27 @@
+{
+    "id": "398285B0",
+    "path": "~/amostra_usp_analise_de_dados/script.R",
+    "project_path": "script.R",
+    "type": "r_source",
+    "hash": "2446705087",
+    "contents": "",
+    "dirty": false,
+    "created": 1694908203393.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "77,0",
+        "scrollLine": "58"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1694911130,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1694911130344,
+    "read_only": false,
+    "read_only_alternatives": []
+}

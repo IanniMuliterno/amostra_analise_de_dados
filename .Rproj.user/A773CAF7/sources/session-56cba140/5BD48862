@@ -1,0 +1,32 @@
+{
+    "id": "5BD48862",
+    "path": "~/amostra_usp_analise_de_dados/amostra_usp.qmd",
+    "project_path": "amostra_usp.qmd",
+    "type": "quarto_markdown",
+    "hash": "2724630065",
+    "contents": "",
+    "dirty": false,
+    "created": 1694908312937.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "rmdVisualMode": "true",
+        "rmdVisualWrapConfigured": "true",
+        "tempName": "Untitled2",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "33,0",
+        "scrollLine": "0",
+        "docOutlineVisible": "1",
+        "rmdVisualCollapsedChunks": "",
+        "rmdVisualModeLocation": "873:661.5999755859375"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1694911133,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1694911133749,
+    "read_only": false,
+    "read_only_alternatives": []
+}

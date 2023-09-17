@@ -1,0 +1,46 @@
+---
+title: "Amostra USP"
+author: "Ianní"
+format: revealjs
+editor: visual
+---
+
+## Introdução a ciência de dados
+
+Diferenças entre estatística e ciência de dados.
+
+1.  **Lado da Estatística**:
+
+    -   "Focado em coleta, análise e interpretação de dados."
+
+    -   "Principalmente voltada para inferência."
+
+    -   "Centenas de anos de história."
+
+2.  **Lado da Ciência de Dados**:
+
+    -   "Incorpora habilidades de programação e machine learning."
+
+    -   "Uso de tecnologias de big data e processamento."
+
+    -   "Extrair valor dos dados para tomada de decisões."
+
+Grande diferencial da ciencia de dados = negócios, temos que trazer soluções para tomada de decisão e demonstrar resultados de um jeito facil.
+
+Ciclo da ciência de dados.
+
+inserir imagem do ciclo
+
+## Coleta de dados
+
+Falar onde os alunos podem encontrar boas fontes de dados reais.
+
+como kaggle, UCI, github ( em especifico o github do tidytuesday)
+
+## Code
+
+When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
