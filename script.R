@@ -83,7 +83,7 @@ hotel_stays <- hotels |>
   select(-is_canceled, -reservation_status)
 
 hotel_stays
-
+str(hotel_stays)
 
 hotel_stays |> 
   count(children)
@@ -125,7 +125,49 @@ hotel_stays |>
     fill = NULL
   )
 
+#comparação de característica de hospedagem
+# Preprocessamento e transformação de dados
+df_processed <- df_hotels |> 
+  filter(is_canceled == 0) |> 
+  mutate(
+    parents = if_else(children > 0 | babies > 0, 1, 0),
+    parents_detailed = case_when(children > 0 ~ "pais",
+                                 babies > 0 ~ "pais_jovens",
+                                 TRUE ~ "sem_filhos"),
+    meal_num = if_else(meal %in% c("HB", "FB"), 1, 0)
+  ) |> 
+  dplyr::select(parents_detailed,# not_canceled,
+                stays_in_weekend_nights, 
+                meal_num, total_of_special_requests) |> 
+  pivot_longer(cols = stays_in_weekend_nights:total_of_special_requests,
+               names_to = "variable",
+               values_to = "value") |> 
+  group_by(parents_detailed, variable) |>
+  summarize(
+    yes = sum(value > 0) / n(),
+    no = sum(value == 0) / n()
+  ) |> 
+  pivot_longer(cols = c(yes, no),
+               names_to = "group",
+               values_to = "value")|>
+  filter(group == "yes")
 
+# Paletas de cores simplificadas
+color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents" = "#8da0cb")
+
+  ggplot(df_processed , aes(x = variable, y = value, fill = parents_detailed)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = color_fill) +
+  scale_alpha_manual(0.6) +
+  labs(title = "Comparação de característica de hospedagem",
+       x = "Características",
+       y = "%",
+       fill = "tem filhos?",
+       alpha = "Type of Parent") +
+  theme_minimal()
+p
+
+# GGPAIRS
 
 hotel_stays %>%
   select(

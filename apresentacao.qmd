@@ -199,6 +199,26 @@ hotel_stays |>
   )+
   ggtitle("Proporção de estadia")
 ```
+
+## Visualizar
+```{r eval=FALSE,echo=TRUE}
+hotel_stays |> 
+  count(hotel, required_car_parking_spaces, children) |> 
+  group_by(hotel, children) |> 
+  mutate(proportion = n / sum(n)) |> 
+  ggplot(aes(required_car_parking_spaces, proportion, fill = children)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_wrap(~hotel, nrow = 2) +
+  labs(
+    x = NULL,
+    y = "Proporção de estadia",
+    fill = NULL
+  )+
+  ggtitle("Proporção de acordo com solicitação de vagas e presença de crianças")
+
+```
+
 ## Visualizar
 ```{r}
 hotel_stays |> 
@@ -217,6 +237,74 @@ hotel_stays |>
   ggtitle("Proporção de acordo com solicitação de vagas e presença de crianças")
 
 ```
+
+## Visualizar 
+Características de hospedagem
+```{r echo=TRUE}
+df_processed <- df_hotels |> 
+  filter(is_canceled == 0) |> 
+  mutate(
+    parents = if_else(children > 0 | babies > 0, 1, 0),
+    parents_detailed = case_when(children > 0 ~ "pais",
+                                 babies > 0 ~ "pais_jovens",
+                                 TRUE ~ "sem_filhos"),
+    meal_num = if_else(meal %in% c("HB", "FB"), 1, 0)
+  ) |> 
+  dplyr::select(parents_detailed,# not_canceled,
+                stays_in_weekend_nights, 
+                meal_num, total_of_special_requests) |> 
+  pivot_longer(cols = stays_in_weekend_nights:total_of_special_requests,
+               names_to = "variable",
+               values_to = "value") |> 
+  group_by(parents_detailed, variable) |>
+  summarize(
+    yes = sum(value > 0) / n(),
+    no = sum(value == 0) / n()
+  ) |> 
+  pivot_longer(cols = c(yes, no),
+               names_to = "group",
+               values_to = "value")|>
+  filter(group == "yes")
+```
+## Visualizar 
+Características de hospedagem
+```{r eval=FALSE,echo=TRUE}
+# Paletas de cores simplificadas
+color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents" = "#8da0cb")
+
+  ggplot(df_processed , aes(x = variable, y = value, fill = parents_detailed)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = color_fill) +
+  scale_alpha_manual(0.6) +
+  labs(title = "Comparação de característica de hospedagem",
+       x = "Características",
+       y = "%",
+       fill = "tem filhos?",
+       alpha = "Type of Parent") +
+  theme_minimal()
+
+```
+
+## Visualizar 
+Características de hospedagem
+```{r }
+# Paletas de cores simplificadas
+color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents" = "#8da0cb")
+
+  ggplot(df_processed , aes(x = variable, y = value, fill = parents_detailed)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = color_fill) +
+  scale_alpha_manual(0.6) +
+  labs(title = "Comparação de característica de hospedagem",
+       x = "Características",
+       y = "%",
+       fill = "tem filhos?",
+       alpha = "Type of Parent") +
+  theme_minimal()
+
+```
+
+
 ## Visualizar
 Ggpairs nos ajuda a analisar de modo geral o que tem correlação com a presença de crianças
 ```{r eval=FALSE,echo=TRUE}
