@@ -1,0 +1,478 @@
+---
+title: "Análise de dados"
+subtitle: "Com ajuda do tidytuesday"
+author: "[Ianní Muliterno](https://www.linkedin.com/in/iannimuliterno/)"
+format: 
+  rladies-revealjs:
+    footer: "[R-Ladies](https://rladies.org/) theme for [Quarto Presentations](https://quarto.org/docs/presentations/revealjs/index.html). Code available on [GitHub](https://github.com/beatrizmilz/quarto-rladies-theme)."
+incremental: false
+embed-resources: true
+---
+
+## Ministrante
+::: columns
+::: {.column width="50%"}
+- Ianní Muliterno
+- Graduado em Estatística na Universidade Federal de Pernambuco;
+- Cientista de dados na Unilever;
+- Co-organizador da R-Ladies São Paulo, uma comunidade que tem como objetivo promover a diversidade de gênero na comunidade da linguagem R;
+- Escritor.
+:::
+::: {.column width="50%"}
+- Geovana
+- Graduada em Matemática (licenciatura). Atualmente cursando Estatística (bacharel) no IME-USP e Pós-Graduação em Ciência de Dados no IFSP Campinas;
+- Cientista de Dados na Almap BBDO;
+- Co-organizadora da R-Ladies São Paulo.
+
+:::
+:::
+## Pré-requisitos
+
+
+-   `R` e `RStudio` instalados no seu computador:
+
+-   Links para instalação:
+
+    -   [R](https://cran.r-project.org/bin/windows/base/)
+    -   [RStudio](https://rstudio.com/products/rstudio/download/)
+
+## Análise de dados
+
+A análise de dados tem por objetivo transformar informação em insights e soluções, não necessariamente envolve modelagem, mas gosto muito desta visão do ciclo da análise de dados:
+
+<img src="img/environmental-data-science-r4ds-general.png" style="display: block; margin-left: auto; margin-right: auto;"/>
+:::footer
+Créditos da imagem [Allison Horst](https://allisonhorst.com/).
+:::
+
+## A nossa base
+
+A base de hoje se chama `hotels`, compartilhada pelo Tidytuesday em 2020.
+Tidytuesday é um projeto que lança semanalmente bases de dados reais. Organizado pela comunidade R4DS.
+
+<img src="img/tt_logo.png" style="display: block; margin-left: auto; margin-right: auto;"/>
+
+## Primeiro passo - Importar
+
+Quando a base de dados está disponível em algum repositório público do github, podemos carregar assim:
+
+```{r  echo = TRUE}
+#importando pacotes
+library(tidyverse)
+library(skimr)
+library(GGally)
+library(tidymodels)
+library(recipes)
+library(workflows)
+library(corrplot)
+
+hotels <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv")
+
+```
+
+Um problema comum que podemos encontrar é ter de carregar uma base de dados local muito grande, neste caso, uma boa saída seria utilizar data.table
+
+
+```{r  eval= FALSE,echo = TRUE}
+
+#base <- data.table::fread("seu_path")
+
+```
+
+## Segundo passo - Arrumar (Limpeza e pré-processamento)
+
+Primeiramente, precisamos conhecer a base,
+
+- Quais colunas temos disponíveis? 
+- Quais os tipos das colunas? 
+- Existe algum problema de coleta? 
+. . .
+Aqui temos o jeito prático e o jeito amigável. O prático serve para o analista, o amigável para seu consumidor final.
+
+## Arrumar - Prático vs Amigável
+
+Para a versão prática, vamos utilizar a função `skim` do pacote skimr, para obtermos um overview.
+
+## Prático
+
+<img src="img/pratico.PNG" style="display: block; margin-left: auto; margin-right: auto;"/>
+
+## Prático
+
+<img src="img/pratico2.PNG" style="display: block; margin-left: auto; margin-right: auto;"/>
+
+## Prático
+
+<img src="img/pratico3.PNG" style="display: block; margin-left: auto; margin-right: auto;"/>
+
+## Amigável
+```{r eval = FALSE, echo=TRUE}
+hotels |> 
+  select_if(is.numeric) |> 
+  pivot_longer(1:18) |> 
+ggplot(aes(x=value)) +
+  geom_histogram() +
+  labs(title="Histograma") +
+  facet_wrap(~name,scales = "free")
+
+```
+
+## Amigável
+```{r echo = FALSE}
+hotels |> 
+  select_if(is.numeric) |> 
+  pivot_longer(1:18) |> 
+ggplot(aes(x=value)) +
+  geom_histogram() +
+  labs(title="Histograma") +
+  facet_wrap(~name,scales = "free")
+
+```
+
+## Arrumar -  O que poderia ter acontecido
+
+Lidar com dados vazios, inputs errados e muitas NAs, geralmente levam a:
+
+- Contato com o fornecedor dos dados (pode ser interno, caso exista um time de administração de banco de dados, ou data engineering), para entender a possibilidade de correção. 
+
+- Remoção das colunas ou linhas afetadas (preencher dados faltantes não é algo muito utilizado na prática, por ser arriscado) 
+
+## Terceiro passo - Transformar
+
+Considerar apenas as estadias que de fato aconteceram pois nosso objetivo na análise envolve os hóspedes com filhos.
+
+
+```{r echo=TRUE}
+hotel_stays <- hotels |> 
+  filter(is_canceled == 0) |> 
+  mutate(
+    children = case_when(
+      children + babies > 0 ~ "children",
+      TRUE ~ "none"
+    ),
+    required_car_parking_spaces = case_when(
+      required_car_parking_spaces > 0 ~ "parking",
+      TRUE ~ "none"
+    )
+  )  |> 
+  select(-is_canceled, -reservation_status)
+```
+
+## Quarto passo - Visualizar
+
+Chegou a hora de fazer perguntas para os dados.
+
+```{r eval=FALSE,echo=TRUE}
+
+hotel_stays |> 
+  mutate(arrival_date_month = factor(arrival_date_month,
+                                     levels = month.name
+  )) |> 
+  count(hotel, arrival_date_month, children) |> 
+  group_by(hotel, children) |> 
+  mutate(proportion = n / sum(n)) |> 
+  ggplot(aes(arrival_date_month, proportion, fill = children)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_wrap(~hotel, nrow = 2) +
+  labs(
+    x = NULL,
+    y = "Proporção de estadia ao longo do ano",
+    fill = NULL
+  )
+```
+
+## Visualizar
+
+```{r}
+
+hotel_stays |> 
+  mutate(arrival_date_month = factor(arrival_date_month,
+                                     levels = month.name
+  )) |> 
+  count(hotel, arrival_date_month, children) |> 
+  group_by(hotel, children) |> 
+  mutate(proportion = n / sum(n)) |> 
+  ggplot(aes(arrival_date_month, proportion, fill = children)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_wrap(~hotel, nrow = 2) +
+  labs(
+    x = NULL,
+    y = "Proporção de estadia ao longo do ano",
+    fill = NULL
+  )+
+  ggtitle("Proporção de estadia")
+```
+
+## Visualizar
+```{r eval=FALSE,echo=TRUE}
+hotel_stays |> 
+  count(hotel, required_car_parking_spaces, children) |> 
+  group_by(hotel, children) |> 
+  mutate(proportion = n / sum(n)) |> 
+  ggplot(aes(required_car_parking_spaces, proportion, fill = children)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_wrap(~hotel, nrow = 2) +
+  labs(
+    x = NULL,
+    y = "Proporção de estadia",
+    fill = NULL
+  )+
+  ggtitle("Proporção de acordo com solicitação de vagas e presença de crianças")
+
+```
+
+## Visualizar
+```{r}
+hotel_stays |> 
+  count(hotel, required_car_parking_spaces, children) |> 
+  group_by(hotel, children) |> 
+  mutate(proportion = n / sum(n)) |> 
+  ggplot(aes(required_car_parking_spaces, proportion, fill = children)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_wrap(~hotel, nrow = 2) +
+  labs(
+    x = NULL,
+    y = "Proporção de estadia",
+    fill = NULL
+  )+
+  ggtitle("Proporção de acordo com solicitação de vagas e presença de crianças")
+
+```
+
+## Visualizar 
+<!-- Características de hospedagem -->
+```{r echo=TRUE}
+df_processed <- hotels |> 
+  filter(is_canceled == 0) |> 
+  mutate(
+    parents = if_else(children > 0 | babies > 0, 1, 0),
+    parents_detailed = case_when(children > 0 ~ "pais",
+                                 babies > 0 ~ "pais_jovens",
+                                 TRUE ~ "sem_filhos"),
+    meal_num = if_else(meal %in% c("HB", "FB"), 1, 0)
+  ) |> 
+  dplyr::select(parents_detailed,# not_canceled,
+                stays_in_weekend_nights, 
+                meal_num, total_of_special_requests) |> 
+  pivot_longer(cols = stays_in_weekend_nights:total_of_special_requests,
+               names_to = "variable",
+               values_to = "value") |> 
+  group_by(parents_detailed, variable) |>
+  summarize(
+    yes = sum(value > 0) / n(),
+    no = sum(value == 0) / n()
+  ) |> 
+  pivot_longer(cols = c(yes, no),
+               names_to = "group",
+               values_to = "value")|>
+  filter(group == "yes")
+```
+## Visualizar 
+Características de hospedagem
+```{r eval=FALSE,echo=TRUE}
+# Paletas de cores simplificadas
+color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents" = "#8da0cb")
+
+  ggplot(df_processed , aes(x = variable, y = value, fill = parents_detailed)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = color_fill) +
+  scale_alpha_manual(0.6) +
+  labs(title = "Comparação de característica de hospedagem",
+       x = "Características",
+       y = "%",
+       fill = "tem filhos?",
+       alpha = "Type of Parent") +
+  theme_minimal()
+
+```
+
+## Visualizar 
+Características de hospedagem
+```{r }
+# Paletas de cores simplificadas
+color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents" = "#8da0cb")
+
+  ggplot(df_processed , aes(x = variable, y = value, fill = parents_detailed)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = color_fill) +
+  scale_alpha_manual(0.6) +
+  labs(title = "Comparação de característica de hospedagem",
+       x = "Características",
+       y = "%",
+       fill = "tem filhos?",
+       alpha = "Type of Parent") +
+  theme_minimal()
+
+```
+
+
+## Visualizar
+Ggpairs nos ajuda a analisar de modo geral o que tem correlação com a presença de crianças
+```{r eval=FALSE,echo=TRUE}
+hotel_stays %>%
+  select(
+    children, adr,
+    required_car_parking_spaces,
+    total_of_special_requests
+  ) %>%
+  ggpairs(mapping = aes(color = children))
+```
+## Visualizar
+```{r}
+hotel_stays %>%
+  select(
+    children, adr,
+    required_car_parking_spaces,
+    total_of_special_requests
+  ) %>%
+  ggpairs(mapping = aes(color = children))
+```
+## Visualizar
+colocar mais info que possa passar insights
+
+## Quinto passo - Modelar
+
+primeiramente, quais são as variáveis mais relacionadas com a variável resposta?
+```{r}
+hotels_num <- select_if(hotels, is.numeric) #selecionando apenas colunas numericas
+hotels_cor <- cor(hotels_num) #criando um df com as correlações
+
+corrplot(hotels_cor, tl.col = "red", bg = "White", tl.srt = 45,,
+          #title = "\n\n Correlation Plot Of Gambling Data \n",
+          addCoef.col = "black", type = "lower")
+
+```
+
+## Modelar
+
+Selecionar as colunas mais importantes para a variável resposta e transformar as categóricas em fator (boa prática).
+```{r echo=TRUE}
+hotels_df <- hotel_stays %>%
+  select(
+    children, hotel, arrival_date_month, meal, adr, adults,
+    required_car_parking_spaces, total_of_special_requests,
+    stays_in_week_nights, stays_in_weekend_nights
+  ) %>%
+mutate_if(is.character, factor)
+```
+## Modelar
+
+```{r echo=TRUE}
+set.seed(2023)
+
+#particionar os dados em treino e teste
+hotel_split <- initial_split(hotels_df)
+
+hotel_train <- training(hotel_split)
+hotel_test <- testing(hotel_split)
+
+# Cria uma "receita" para o pré-processamento dos dados. 
+# Estamos tentando prever a variável 'children' com base em todas as outras variáveis (denotadas por '.') no conjunto de dados 'hotel_train'.
+hotel_rec <- recipe(children ~ ., data = hotel_train) %>%
+  #  método de subamostragem para balancear a variável de resposta 'children'. 
+  themis::step_downsample(children) %>%
+  # Converte todas as variáveis nominais (categóricas) em variáveis dummy (ou binárias), exceto a variável de resposta. 
+  # Por exemplo, uma variável categórica com níveis 'A', 'B', e 'C' será convertida em três novas variáveis binárias.
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  # Remove qualquer variável numérica que tenha um único valor (variância zero) em todas as observaçõesjá que tais variáveis não adicionam informações úteis ao modelo.
+  step_zv(all_numeric()) %>%
+  # Normaliza todas as variáveis numéricas para que tenham média 0 e desvio padrão 1. 
+  # Isso ajuda em muitos algoritmos de aprendizado de máquina que são sensíveis à escala das variáveis.
+  step_normalize(all_numeric()) %>%
+  # Prepara a receita aplicando todas as etapas definidas acima.
+  prep()
+
+hotel_rec
+```
+
+## Modelar - KNN
+```{r echo = TRUE}
+
+knn_spec <- nearest_neighbor() %>%
+  set_engine("kknn") %>%
+  set_mode("classification")
+
+knn_fit <- knn_spec %>%
+  fit(children ~ ., data = juice(hotel_rec))
+
+knn_fit
+```
+
+## Modelar - KNN
+```{r echo = TRUE}
+
+validation_splits <- mc_cv(juice(hotel_rec), prop = 0.9, strata = children)
+
+
+knn_wf <- workflow() |> 
+  add_model(knn_spec) |> 
+  add_formula(children ~.)
+
+knn_res <- fit_resamples(
+  knn_wf,
+  validation_splits,
+  control = control_resamples(save_pred = TRUE)
+)
+
+knn_res %>%
+  collect_metrics()
+
+```
+
+## Modelar - Árvore de decisão
+```{r echo=TRUE}
+tree_spec <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+tree_fit <- tree_spec %>%
+  fit(children ~ ., data = juice(hotel_rec))
+
+tree_fit
+```
+
+## Modelar - Árvore de decisão
+```{r echo=TRUE}
+
+tree_wf <- workflow() |> 
+  add_model(tree_spec) |> 
+  add_formula(children ~.)
+
+
+tree_res <- fit_resamples(
+  tree_wf,
+  validation_splits,
+  control = control_resamples(save_pred = TRUE)
+)
+
+tree_res %>%
+  collect_metrics()
+
+
+```
+
+## Comparação de modelos 
+```{r echo=TRUE}
+knn_res %>%
+  unnest(.predictions) %>%
+  mutate(model = "kknn") %>%
+  bind_rows(tree_res %>%
+              unnest(.predictions) %>%
+              mutate(model = "rpart")) %>%
+  group_by(model) %>%
+  roc_curve(children, .pred_children) %>%
+  ggplot(aes(x = 1 - specificity, y = sensitivity, color = model)) +
+  geom_line(size = 1.5) +
+  geom_abline(
+    lty = 2, alpha = 0.5,
+    color = "gray50",
+    size = 1.2
+  )
+```
+
+
+

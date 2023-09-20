@@ -1,7 +1,10 @@
 ---
 title: "Análise de dados"
-subtitle: "Com ajuda do tidytuesday"
-author: "[Ianní Muliterno](https://www.linkedin.com/in/iannimuliterno/)"
+subtitle: "Com ajuda do tidytuesday (dados de hospedagem em hotel)"
+author: 
+  - "[Ianní Muliterno](https://www.linkedin.com/in/iannimuliterno/)"
+  - "[Geovana Lopes](https://www.linkedin.com/in/geovanalopes/?originalSubdomain=br)"
+
 format: 
   rladies-revealjs:
     footer: "[R-Ladies](https://rladies.org/) theme for [Quarto Presentations](https://quarto.org/docs/presentations/revealjs/index.html). Code available on [GitHub](https://github.com/beatrizmilz/quarto-rladies-theme)."
@@ -19,7 +22,10 @@ embed-resources: true
 - Escritor
 :::
 ::: {.column width="50%"}
-- GEO
+- Geovana
+- Graduada em Matemática (licenciatura). Atualmente cursando Estatística (bacharel) no IME-USP e Pós-Graduação em Ciência de Dados no IFSP Campinas;
+- Cientista de Dados na Almap BBDO;
+- Co-organizadora da R-Ladies São Paulo.
 :::
 :::
 ## Pré-requisitos
@@ -43,7 +49,7 @@ Créditos da imagem [Allison Horst](https://allisonhorst.com/).
 
 ## A nossa base
 
-A base de hoje se chama `hotels`, compartilhada pelo Tidytuesday em 2020.
+A base de hoje se chama [`hotels`](https://www.sciencedirect.com/science/article/pii/S2352340918315191), compartilhada pelo Tidytuesday em 2020.
 Tidytuesday é um projeto que lança semanalmente bases de dados reais. Organizado pela comunidade R4DS.
 
 <img src="img/tt_logo.png" style="display: block; margin-left: auto; margin-right: auto;"/>
@@ -60,6 +66,9 @@ library(GGally)
 library(tidymodels)
 library(recipes)
 library(workflows)
+library(RColorBrewer)
+library(ggcorrplot)
+
 
 hotels <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv")
 
@@ -241,7 +250,7 @@ hotel_stays |>
 ## Visualizar 
 Características de hospedagem
 ```{r echo=TRUE}
-df_processed <- df_hotels |> 
+df_processed <- hotels |> 
   filter(is_canceled == 0) |> 
   mutate(
     parents = if_else(children > 0 | babies > 0, 1, 0),
@@ -270,7 +279,7 @@ df_processed <- df_hotels |>
 Características de hospedagem
 ```{r eval=FALSE,echo=TRUE}
 # Paletas de cores simplificadas
-color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents" = "#8da0cb")
+color_fill <- c("pais_jovens" = "#66c2a5", "pais" = "#fc8d62", "sem_filhos" = "#8da0cb")
 
   ggplot(df_processed , aes(x = variable, y = value, fill = parents_detailed)) +
   geom_bar(stat = "identity", position = "dodge") +
@@ -289,7 +298,7 @@ color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents"
 Características de hospedagem
 ```{r }
 # Paletas de cores simplificadas
-color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents" = "#8da0cb")
+color_fill <- c("pais_jovens" = "#66c2a5", "pais" = "#fc8d62", "sem_filhos" = "#8da0cb")
 
   ggplot(df_processed , aes(x = variable, y = value, fill = parents_detailed)) +
   geom_bar(stat = "identity", position = "dodge") +
@@ -305,49 +314,78 @@ color_fill <- c("young_parents" = "#66c2a5", "parents" = "#fc8d62", "no_parents"
 ```
 
 
-## Visualizar
+## Antes de modelar...
+
+primeiramente, quais são as variáveis mais relacionadas com a variável resposta? 
+
 Ggpairs nos ajuda a analisar de modo geral o que tem correlação com a presença de crianças
 ```{r eval=FALSE,echo=TRUE}
-hotel_stays %>%
+hotel_stays |>
   select(
     children, adr,
     required_car_parking_spaces,
     total_of_special_requests
-  ) %>%
+  ) |>
   ggpairs(mapping = aes(color = children))
 ```
+
 ## Visualizar
 ```{r}
-hotel_stays %>%
+hotel_stays |>
   select(
     children, adr,
     required_car_parking_spaces,
     total_of_special_requests
-  ) %>%
+  ) |>
   ggpairs(mapping = aes(color = children))
 ```
-## Visualizar
-colocar mais info que possa passar insights
+
+[pausa para apreciar o poder dos histogramas+boxplot](https://citoolkit.com/articles/histograms-and-boxplots/ )
+
+## Mas...
+- Correlação Clássica (Pearson): Esta é utilizada para avaliar a relação linear entre duas variáveis contínuas ou ordinais. Assim, é apropriada para variáveis numéricas.
+
+- Correlação de Spearman: Esta é uma medida de correlação de postos e não pressupõe uma relação linear. É frequentemente utilizada para variáveis ordinais, mas também pode ser usada com variáveis numéricas quando a relação entre elas não é estritamente linear.
+
+- Qui-quadrado: Serve para ter noção se variáveis categóricas estão transmitindo informações semelhantes, algo menos usual que eu particularmente não aplico no dia a dia se preciso construir modelo.
+
+## Outras questões
+
+- Também poderíamos ter de lidar com multicolinearidade 
+- Se a base fosse muito grande poderíamos precisar rodar uma seleção de variáveis
+
+E aí?
+
+## Multicolinearidade X Seleção de variáveis
+
+- Rodar uma seleção de variáveis (por exemplo, stepwise), não garante que a multicolinearidade será tratada, então ambos devem ser feitos em caso de um modelo muito grande 
+- Dito isto, qual o tamanho do problema que é, ter multicolinearidade?
+- como evitar ? (uma forma nós ja vimos) 
+
+## VIF 
+
+Avalia se existe relação múltipla entre variáveis X's. 
+A pergunta que ela responde é: 
+
+- o quanto o $R^2$ da variavel $X_1$ assumindo o papel de Y com todas as outras X´s? 
+
+O pacote `olsrr` oferece a função `ols_vif_tol(modelo)`
 
 ## Quinto passo - Modelar
 
-primeiramente, quais são as variáveis mais relacionadas com a variável resposta?
-```{r}
-
-```
-
-## Modelar
-
-Selecionar as colunas mais importantes para a variável resposta e transformar as categóricas em fator (boa prática).
+Selecionar as colunas mais importantes para a variável resposta e transformar as categóricas em fator (boa prática, pois alguns modelos, como knn podem demandar isso).
 ```{r echo=TRUE}
-hotels_df <- hotel_stays %>%
+hotels_df <- hotel_stays |>
+  filter(adr > 0) |> 
   select(
     children, hotel, arrival_date_month, meal, adr, adults,
     required_car_parking_spaces, total_of_special_requests,
     stays_in_week_nights, stays_in_weekend_nights
-  ) %>%
+  ) |>
 mutate_if(is.character, factor)
 ```
+
+
 ## Modelar
 
 ```{r echo=TRUE}
@@ -361,31 +399,71 @@ hotel_test <- testing(hotel_split)
 
 # Cria uma "receita" para o pré-processamento dos dados. 
 # Estamos tentando prever a variável 'children' com base em todas as outras variáveis (denotadas por '.') no conjunto de dados 'hotel_train'.
-hotel_rec <- recipe(children ~ ., data = hotel_train) %>%
+hotel_rec <- recipe(children ~ ., data = hotel_train) |>
   #  método de subamostragem para balancear a variável de resposta 'children'. 
-  themis::step_downsample(children) %>%
+  themis::step_downsample(children) |>
   # Converte todas as variáveis nominais (categóricas) em variáveis dummy (ou binárias), exceto a variável de resposta. 
   # Por exemplo, uma variável categórica com níveis 'A', 'B', e 'C' será convertida em três novas variáveis binárias.
-  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_dummy(all_nominal(), -all_outcomes()) |>
   # Remove qualquer variável numérica que tenha um único valor (variância zero) em todas as observaçõesjá que tais variáveis não adicionam informações úteis ao modelo.
-  step_zv(all_numeric()) %>%
+  step_zv(all_numeric()) |>
   # Normaliza todas as variáveis numéricas para que tenham média 0 e desvio padrão 1. 
   # Isso ajuda em muitos algoritmos de aprendizado de máquina que são sensíveis à escala das variáveis.
-  step_normalize(all_numeric()) %>%
+  step_normalize(all_numeric()) |>
   # Prepara a receita aplicando todas as etapas definidas acima.
   prep()
 
 hotel_rec
 ```
 
+É possível usar recipes apenas para pré-processamento e então partir para as funções de modelo que estamos acostumados. (exemplo)
+
+## Modelar - GLM
+```{r echo= TRUE}
+
+# Especificar o modelo GLM
+glm_spec <- logistic_reg() |>  
+  set_engine("glm") |>  
+  set_mode("classification")
+
+# Ajuste o modelo
+glm_fit <- glm_spec |>  
+  fit(children ~ ., data = juice(hotel_rec))
+glm_fit
+```
+
+
+
+## Modelar - GLM
+```{r echo= TRUE}
+
+validation_splits <- mc_cv(juice(hotel_rec), prop = 0.9, strata = children)
+# Definir o fluxo de trabalho para o GLM
+glm_wf <- workflow() |>  
+  add_model(glm_spec) |>  
+  add_formula(children ~ .)
+
+
+
+glm_res <- fit_resamples(
+  glm_wf,
+  validation_splits,
+  control = control_resamples(save_pred = TRUE)
+)
+
+glm_res |>
+  collect_metrics()
+```
+
+
 ## Modelar - KNN
 ```{r echo = TRUE}
 
-knn_spec <- nearest_neighbor() %>%
-  set_engine("kknn") %>%
+knn_spec <- nearest_neighbor() |>
+  set_engine("kknn") |>
   set_mode("classification")
 
-knn_fit <- knn_spec %>%
+knn_fit <- knn_spec |>
   fit(children ~ ., data = juice(hotel_rec))
 
 knn_fit
@@ -394,7 +472,6 @@ knn_fit
 ## Modelar - KNN
 ```{r echo = TRUE}
 
-validation_splits <- mc_cv(juice(hotel_rec), prop = 0.9, strata = children)
 
 
 knn_wf <- workflow() |> 
@@ -407,18 +484,18 @@ knn_res <- fit_resamples(
   control = control_resamples(save_pred = TRUE)
 )
 
-knn_res %>%
+knn_res |>
   collect_metrics()
 
 ```
 
 ## Modelar - Árvore de decisão
 ```{r echo=TRUE}
-tree_spec <- decision_tree() %>%
-  set_engine("rpart") %>%
+tree_spec <- decision_tree() |>
+  set_engine("rpart") |>
   set_mode("classification")
 
-tree_fit <- tree_spec %>%
+tree_fit <- tree_spec |>
   fit(children ~ ., data = juice(hotel_rec))
 
 tree_fit
@@ -438,22 +515,27 @@ tree_res <- fit_resamples(
   control = control_resamples(save_pred = TRUE)
 )
 
-tree_res %>%
+tree_res |>
   collect_metrics()
 
 
 ```
 
+
+
 ## Comparação de modelos 
-```{r echo=TRUE}
-knn_res %>%
-  unnest(.predictions) %>%
-  mutate(model = "kknn") %>%
-  bind_rows(tree_res %>%
-              unnest(.predictions) %>%
-              mutate(model = "rpart")) %>%
-  group_by(model) %>%
-  roc_curve(children, .pred_children) %>%
+```{r eval=FALSE,echo=TRUE}
+knn_res |> 
+  unnest(.predictions) |> 
+  mutate(model = "kknn") |> 
+  bind_rows(tree_res |> 
+              unnest(.predictions) |> 
+              mutate(model = "rpart")) |> 
+  bind_rows(glm_res |> 
+              unnest(.predictions) |> 
+              mutate(model = "glm")) |> 
+  group_by(model) |> 
+  roc_curve(children, .pred_children) |> 
   ggplot(aes(x = 1 - specificity, y = sensitivity, color = model)) +
   geom_line(size = 1.5) +
   geom_abline(
@@ -461,7 +543,48 @@ knn_res %>%
     color = "gray50",
     size = 1.2
   )
+
+```
+
+## Comparação de modelos 
+```{r}
+knn_res |> 
+  unnest(.predictions) |> 
+  mutate(model = "kknn") |> 
+  bind_rows(tree_res |> 
+              unnest(.predictions) |> 
+              mutate(model = "rpart")) |> 
+  bind_rows(glm_res |> 
+              unnest(.predictions) |> 
+              mutate(model = "glm")) |> 
+  group_by(model) |> 
+  roc_curve(children, .pred_children) |> 
+  ggplot(aes(x = 1 - specificity, y = sensitivity, color = model)) +
+  geom_line(size = 1.5) +
+  geom_abline(
+    lty = 2, alpha = 0.5,
+    color = "gray50",
+    size = 1.2
+  )
+
+```
+
+## Melhor modelo + base de teste
+Outra coisa incomum no meio acadêmico que é comum nos negócios é separar em treino e teste para trazer mais segurança sobre a performance do modelo
+```{r echo = TRUE}
+
+test_proc <- bake(hotel_rec, new_data = hotel_test)
+
+glm_fit |> 
+  predict(new_data = test_proc, type = "prob")  |> 
+  mutate(truth = hotel_test$children) |> 
+  roc_auc(truth, .pred_children)
 ```
 
 
+## Agradecimentos
+- Todos envolvidos no evento
+- R-ladies
+- [Julia Silge](https://juliasilge.com/)
+- [Adrina Silva - ASN rocks](https://asn.rocks/)
 
